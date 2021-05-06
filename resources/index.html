@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+	<meta charset="utf-8"/>
+
+	<title>おためし！リアルタイム音声認識</title>
+
+	<link rel="icon" href="favicon.svg" type="image/svg+xml">
+	<link rel="stylesheet" type="text/css" href="index.css" />
+	<script type="text/javascript" src="index.js" charset="UTF-8"></script>
+</head>
+<body>
+	<section id="message-section">
+		<p id="message-paragraph">
+			読込中です。しばらくおまちください。
+		</p>
+	</section>
+	<section id="login-section">
+		<p>
+			<label>ユーザ名：<input id="login-username-input" type="text"/></label>
+		</p>
+		<p>
+			<label>パスワード：<input id="login-password-input" type="password"/></label>
+		</p>
+		<p>
+			<button id="login-button">ログイン</button>
+		</p>
+	</section>
+	<section id="main-section">
+		<p>
+			ログイン成功！
+		</p>
+		<p>
+			<canvas id="frequency-canvas"></canvas>
+			<button id="frequency-start-button" disabled="true">開始</button>
+			<button id="frequency-stop-button" disabled="true">停止</button>
+		</p>
+	</section>
+</body>
+</html>

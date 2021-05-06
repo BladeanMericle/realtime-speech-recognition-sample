@@ -1,0 +1,23 @@
+/* メッセージセクション */
+#message-section {
+    display: block;
+}
+
+/* ログインセクション */
+#login-section {
+    display: none;
+}
+
+/* メインセクション */
+#main-section {
+    display: none;
+}
+
+/* 周波数の描画領域 */
+#frequency-canvas {
+    height: 100px;
+    width: 400px;
+    border: 1px;
+    border-style: solid;
+    border-color: black;
+}

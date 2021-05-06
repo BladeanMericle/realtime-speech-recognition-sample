@@ -1,0 +1,32 @@
+{
+  "name": "realtime-speech-recognition-sample",
+  "version": "0.0.1",
+  "description": "リアルタイム音声認識のサンプルです。",
+  "main": "index.js",
+  "scripts": {
+    "build-development": "cpx resources/**/* release && webpack --mode development",
+    "build-production": "cpx resources/**/* release && webpack --mode production",
+    "debug": "http-server ./release -p 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/BladeanMericle/realtime-speech-recognition-sample.git"
+  },
+  "author": "Bladean Mericle",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/BladeanMericle/realtime-speech-recognition-sample/issues"
+  },
+  "homepage": "https://github.com/BladeanMericle/realtime-speech-recognition-sample#readme",
+  "dependencies": {
+    "amazon-cognito-identity-js": "^4.6.0",
+    "aws-sdk": "^2.897.0",
+    "util": "^0.12.3"
+  },
+  "devDependencies": {
+    "cpx": "^1.5.0",
+    "http-server": "^0.12.3",
+    "webpack": "^5.36.2",
+    "webpack-cli": "^4.6.0"
+  }
+}

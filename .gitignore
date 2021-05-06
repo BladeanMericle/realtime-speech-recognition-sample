@@ -102,3 +102,9 @@ dist
 
 # TernJS port file
 .tern-port
+
+# 設定ファイル
+config.json
+
+# リリースフォルダ
+release/
