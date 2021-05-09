@@ -19,11 +19,12 @@
   },
   "homepage": "https://github.com/BladeanMericle/realtime-speech-recognition-sample#readme",
   "dependencies": {
-    "amazon-cognito-identity-js": "^4.6.0",
-    "aws-sdk": "^2.897.0",
-    "util": "^0.12.3"
+    "@aws-sdk/client-transcribe-streaming": "^3.14.0",
+    "@aws-sdk/credential-provider-cognito-identity": "^3.14.0",
+    "amazon-cognito-identity-js": "^4.6.0"
   },
   "devDependencies": {
+    "@types/dom-mediacapture-record": "^1.0.7",
     "cpx": "^1.5.0",
     "http-server": "^0.12.3",
     "webpack": "^5.36.2",

@@ -28,12 +28,22 @@
 	</section>
 	<section id="main-section">
 		<p>
-			ログイン成功！
+			[開始]を押してマイクに向かって話すと音声認識します。[停止]を押すと音声認識を終了します。
 		</p>
 		<p>
 			<canvas id="frequency-canvas"></canvas>
-			<button id="frequency-start-button" disabled="true">開始</button>
-			<button id="frequency-stop-button" disabled="true">停止</button>
+			<button id="start-button" disabled="true">開始</button>
+			<button id="stop-button" disabled="true">停止</button>
+		</p>
+		<p>
+			<div>
+				<p>
+					Amazon Transcribe
+				</p>
+				<p>
+					<textarea id="amazon-textarea" cols="40" rows="20" readonly="true"></textarea>
+				</p>
+			</div>
 		</p>
 	</section>
 </body>

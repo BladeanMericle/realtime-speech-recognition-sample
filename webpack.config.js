@@ -5,10 +5,5 @@ module.exports = {
     output: {
         path: Path.resolve(__dirname, 'release'),
         filename: 'index.js'
-    },
-    resolve: {
-        fallback: {
-          "util": require.resolve("util/"),
-        },
-      }
+    }
 };

@@ -5,6 +5,12 @@ const Amazon = require('./amazon');
 const Frequency = require('./frequency');
 
 /**
+ * 音声フォーマットのMIME。
+ * @type {string}
+ */
+const audioMime = 'audio/ogg';
+
+/**
  * メッセージセクション。
  * @type {HTMLElement}
  */
@@ -14,7 +20,7 @@ let messageSection = null;
  * メッセージ段落。
  * @type {HTMLElement}
  */
- let messageParagraph = null;
+let messageParagraph = null;
 
 /**
  * ログインセクション。
@@ -53,16 +59,22 @@ let mainSection = null;
 let frequencyCanvas = null;
 
 /**
- * 周波数スペクトル表示の開始ボタン。
+ * 開始ボタン。
  * @type {HTMLButtonElement}
  */
-let frequencyStartButton = null;
+let startButton = null;
 
 /**
- * 周波数スペクトル表示の停止ボタン。
+ * 停止ボタン。
  * @type {HTMLButtonElement}
  */
-let frequencyStopButton = null;
+let stopButton = null;
+
+/**
+ * Amazon Transcribe の認識結果。
+ * @type {HTMLButtonElement}
+ */
+let amazonTextarea = null;
 
 /**
  * 音声メディアストリーム。
@@ -83,6 +95,12 @@ let audioContext = null;
 let frequencyPainter = null;
 
 /**
+ * 音声レコーダー。
+ * @type {MediaRecorder}
+ */
+let mediaRecorder = null;
+
+/**
  * 要素を読み込みます。
  */
 function loadElements() {
@@ -95,10 +113,11 @@ function loadElements() {
     Common.addClickEvent(loginButton, login);
     mainSection = Common.getSectionElement('main-section');
     frequencyCanvas = Common.getCanvasElement('frequency-canvas');
-    frequencyStartButton = Common.getButtonElement('frequency-start-button');
-    Common.addClickEvent(frequencyStartButton, startFrequencyDisplay);
-    frequencyStopButton = Common.getButtonElement('frequency-stop-button');
-    Common.addClickEvent(frequencyStopButton, stopFrequencyDisplay);
+    startButton = Common.getButtonElement('start-button');
+    Common.addClickEvent(startButton, start);
+    stopButton = Common.getButtonElement('stop-button');
+    Common.addClickEvent(stopButton, stop);
+    amazonTextarea = Common.getTextareaElement('amazon-textarea');
 }
 
 /**
@@ -120,22 +139,23 @@ function showMainPage() {
     loginSection.style.display = 'none';
     mainSection.style.display = 'block';
 
+    // 実は判定が甘く二重にユーザーメディアを取得する可能性がありますが、十分実用に耐えると判断して放置しています。
     if (audioMediaStream) {
         return;
     }
 
     console.debug('Getting user media.');
-    navigator.mediaDevices.getUserMedia({ audio: true })
+    navigator.mediaDevices.getUserMedia({ video: false, audio: true })
     .then((mediaStream) => {
         console.info('Succeeded to get user media.');
         audioMediaStream = mediaStream;
         audioContext = new AudioContext();
         frequencyPainter = new Frequency.FrequencyPainter(audioContext, audioMediaStream, frequencyCanvas, '#48D1CC');
-        frequencyStartButton.disabled = false;
+        startButton.disabled = false;
     })
     .catch((error) => {
         console.error('Failed to get user media.', error);
-        alert('マイクの準備ができませんでした。設定を確認し、ページを再読み込みしてください。');
+        alert('マイクの準備ができませんでした。設定を確認し、ページを再読み込みしてみてください。');
     });
 }
 
@@ -175,35 +195,89 @@ function login(ev) {
 }
 
 /**
- * 周波数スペクトルの表示を開始します。
+ * 音声認識を開始します。
  * @this {HTMLElement}
  * @param {MouseEvent} ev マウスイベント
  */
-function startFrequencyDisplay(ev) {
-    if (!frequencyPainter) {
+function start(ev) {
+    console.info('Start speech recognition.');
+    if (frequencyPainter) {
+        frequencyPainter.start();
+    }
+
+    amazonTextarea.textContent = '';
+
+    if (!MediaRecorder.isTypeSupported(audioMime)) {
+        alert('Webブラウザがogg形式をサポートしていないため、音声認識を開始できません。');
         return;
     }
 
-    console.info('Start frequency display.');
-    frequencyStartButton.disabled = true;
-    frequencyPainter.start();
-    frequencyStopButton.disabled = false;
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+    }
+
+    mediaRecorder = new MediaRecorder(audioMediaStream, {
+        mimeType: audioMime,
+    });
+
+    Amazon.registerStreamTranscription(mediaRecorder, 'ja-JP', 'ogg-opus', 48000, (transcript) => {
+        console.debug('Received stream transcription.', transcript);
+        if (!transcript.Results) {
+            return;
+        }
+
+        transcript.Results.forEach((result) => {
+            // 途中経過は表示しません。
+            if (result.IsPartial) {
+                return;
+            }
+
+            if (!result.Alternatives)
+            {
+                return;
+            }
+
+            result.Alternatives.forEach((alternative) => {
+                if (!alternative.Transcript) {
+                    return;
+                }
+
+                amazonTextarea.textContent += result.StartTime + ' : ' + alternative.Transcript + '\n';
+            });
+        });
+    })
+    .then(() => {
+        console.info('Finished stream transcription.');
+        amazonTextarea.textContent += '[認識終了]\n';
+    })
+    .catch((error) => {
+        console.error('Failed stream transcription.', error);
+    });
+
+    amazonTextarea.textContent += '[認識開始]\n';
+    mediaRecorder.start(500);
+    startButton.disabled = true;
+    stopButton.disabled = false;
 }
 
 /**
- * 周波数スペクトルの表示を停止します。
+ * 音声認識を停止します。
  * @this {HTMLElement}
  * @param {MouseEvent} ev マウスイベント
  */
-function stopFrequencyDisplay(ev) {
-    if (!frequencyPainter) {
-        return;
+function stop(ev) {
+    console.info('Stop speech recognition.');
+    if (frequencyPainter) {
+        frequencyPainter.stop();
     }
 
-    console.info('Stop frequency display.');
-    frequencyStopButton.disabled = true;
-    frequencyPainter.stop();
-    frequencyStartButton.disabled = false;
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+        mediaRecorder = null;
+    }
+
+    stopButton.disabled = true;
+    startButton.disabled = false;
 }
 
 Common.addLoadAction(() => {

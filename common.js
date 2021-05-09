@@ -110,10 +110,24 @@ function getCanvasElement(elementId) {
  * @param {string} elementId 要素ID。
  * @returns {HTMLParagraphElement} p要素。
  */
- function getParagraphElement(elementId) {
+function getParagraphElement(elementId) {
     const element = getElementById(elementId);
     if (!(element instanceof HTMLParagraphElement)) {
         throw new Error(`'${elementId}' is not HTMLParagraphElement.`);
+    }
+
+    return element;
+}
+
+/**
+ * 要素のIDからtextarea要素を取得します。
+ * @param {string} elementId 要素ID。
+ * @returns {HTMLTextAreaElement} textarea要素。
+ */
+function getTextareaElement(elementId) {
+    const element = getElementById(elementId);
+    if (!(element instanceof HTMLTextAreaElement)) {
+        throw new Error(`'${elementId}' is not HTMLTextAreaElement.`);
     }
 
     return element;
@@ -146,4 +160,5 @@ exports.getInputElement = getInputElement;
 exports.getButtonElement = getButtonElement;
 exports.getCanvasElement = getCanvasElement;
 exports.getParagraphElement = getParagraphElement;
+exports.getTextareaElement = getTextareaElement;
 exports.readJson = readJson;

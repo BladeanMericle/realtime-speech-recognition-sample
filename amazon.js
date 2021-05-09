@@ -1,44 +1,45 @@
 'use strict';
 
-const AWS = require('aws-sdk/global');
-// const Lambda = require('aws-sdk/clients/lambda');
-const AmazonCognitoIdentity = require('amazon-cognito-identity-js');
+const { CognitoUserPool, CognitoUser, AuthenticationDetails } = require('amazon-cognito-identity-js');
+const { CognitoIdentityClient } = require("@aws-sdk/client-cognito-identity");
+const { fromCognitoIdentityPool } = require('@aws-sdk/credential-provider-cognito-identity');
+const { TranscribeStreamingClient, StartStreamTranscriptionCommand, Transcript } = require('@aws-sdk/client-transcribe-streaming');
 
 /**
  * リージョン名。
  * @type {string}
  */
-let regionName;
+let regionName = null;
 
 /**
  * ユーザープールID。
  * @type {string}
  */
-let userPoolId;
+let userPoolId = null;
 
 /**
  * クライアントID。
  * @type {string}
  */
-let clientId;
+let clientId = null;
 
 /**
  * IDプールID。
  * @type {string}
  */
-let identityPoolId;
+let identityPoolId = null;
 
 /**
  * ユーザープール。
- * @type {AmazonCognitoIdentity.CognitoUserPool}
+ * @type {CognitoUserPool}
  */
 let userPool = null;
 
 /**
- * 認証情報を保持しているかどうか。
- * @type {boolean}
+ * Amazon Transcribe ストリーミングのクライアント。
+ * @type {TranscribeStreamingClient}
  */
-let hasCredentials = false;
+let transcribeStreamingClient = null;
 
 /**
  * 設定を設定します。
@@ -69,7 +70,7 @@ function setConfig(config) {
         throw new Error('Not found identity pool ID.');
     }
 
-    userPool = new AmazonCognitoIdentity.CognitoUserPool({
+    userPool = new CognitoUserPool({
         UserPoolId: userPoolId,
         ClientId: clientId,
         Storage: sessionStorage
@@ -77,30 +78,20 @@ function setConfig(config) {
 }
 
 /**
- * AWSの認証情報を設定します。
+ * クライアントを準備します。
  * @param {string} accessToken アクセストークン。
- * @returns {Promise<boolean>} 非同期処理の結果。戻り値に意味はありません。
  */
-function setAwsCredentials(accessToken) {
-    return new Promise((resolve, reject) => {
-        const logins = {};
-        logins['cognito-idp.' + regionName + '.amazonaws.com/' + userPoolId] = accessToken;
-        AWS.config.region = regionName;
-        AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-            IdentityPoolId: identityPoolId,
-            Logins: logins,
-        });
-        AWS.config.credentials.clearCachedId(); // https://forums.aws.amazon.com/thread.jspa?threadID=243850
-        AWS.config.credentials.refresh((error) => {
-            if (error) {
-                hasCredentials = false;
-                reject(new Error(`Failed to refresh AWS credentials : ${error}`));
-                return;
-            }
-
-            hasCredentials = true;
-            resolve(true);
-        });
+function prepareClient(accessToken) {
+    const logins = {};
+    logins['cognito-idp.' + regionName + '.amazonaws.com/' + userPoolId] = accessToken;
+    const credentialProvider = fromCognitoIdentityPool({
+        client: new CognitoIdentityClient({ region: regionName }),
+        identityPoolId: identityPoolId,
+        logins: logins
+    });
+    transcribeStreamingClient = new TranscribeStreamingClient({
+        region: regionName,
+        credentials: credentialProvider
     });
 }
 
@@ -132,13 +123,8 @@ function checkLoginSession() {
                 return;
             }
 
-            setAwsCredentials(session.getIdToken().getJwtToken())
-            .then(() => {
-                resolve(true);
-            })
-            .catch((error) => {
-                reject(error);
-            });
+            prepareClient(session.getIdToken().getJwtToken())
+            resolve(true);
         });
     });
 }
@@ -156,24 +142,19 @@ function login(userName, password) {
             return;
         }
 
-        const cognitoUser = new AmazonCognitoIdentity.CognitoUser({
+        const cognitoUser = new CognitoUser({
             Username: userName,
             Pool: userPool,
             Storage: sessionStorage
         });
         cognitoUser.authenticateUser(
-            new AmazonCognitoIdentity.AuthenticationDetails({
+            new AuthenticationDetails({
                 Username: userName,
                 Password: password,
             }), {
                 onSuccess: (session) => {
-                    setAwsCredentials(session.getIdToken().getJwtToken())
-                    .then(() => {
-                        resolve(false);
-                    })
-                    .catch((error) => {
-                        reject(error);
-                    });
+                    prepareClient(session.getIdToken().getJwtToken())
+                    resolve(false);
                 },
                 onFailure: (error) => {
                     reject(new Error(`Failed to authenticate user : ${error}`));
@@ -185,13 +166,8 @@ function login(userName, password) {
                         {},
                         {
                             onSuccess: (session) => {
-                                setAwsCredentials(session.getIdToken().getJwtToken())
-                                .then(() => {
-                                    resolve(true);
-                                })
-                                .catch((error) => {
-                                    reject(error);
-                                });
+                                prepareClient(session.getIdToken().getJwtToken());
+                                resolve(true);
                             },
                             onFailure: (error) => {
                                 reject(new Error(`Failed to complete new password challenge : ${error}`));
@@ -214,8 +190,137 @@ function logout() {
     cognitoUser.signOut();
 }
 
+/**
+ * 音声認識ストリーミングを登録します。
+ * @param {MediaRecorder} mediaRecorder 音声レコーダー。
+ * @param {string} languageCode 言語コード。
+ * @param {string} mediaEncoding 音声エンコーディング。
+ * @param {number} mediaSampleRateHertz サンプリングレート。
+ * @param {TranscriptEventCallback} transcriptEventCallback サンプリングレート。
+ * @returns {Promise<any>} 非同期処理の結果。戻り値は初回ログインかどうか。
+ */
+function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding, mediaSampleRateHertz, transcriptEventCallback) {
+    return new Promise((resolve, reject) => {
+        if (!(mediaRecorder instanceof MediaRecorder)) {
+            reject(new Error('\'mediaRecorder\' is not MediaRecorder.'));
+        }
+
+        if (!languageCode) {
+            reject(new Error('Not found \'languageCode\'.'));
+        }
+
+        if (!mediaEncoding) {
+            reject(new Error('Not found \'mediaEncoding\'.'));
+        }
+
+        if (!mediaSampleRateHertz) {
+            reject(new Error('Not found \'mediaSampleRateHertz\'.'));
+        }
+
+        if (!transcriptEventCallback) {
+            reject(new Error('Not found \'transcriptEventCallback\'.'));
+        }
+
+        if (!transcribeStreamingClient) {
+            reject(new Error('AWS client is not login yet.'));
+        }
+
+        /** @type {ReadableStream<Uint8Array>} */
+        const readableStream = new ReadableStream({
+            start(controller) {
+                let stopped = false;
+                mediaRecorder.addEventListener('dataavailable', async (e) => {
+                    /** @type {Blob} */
+                    const data = e.data;
+                    controller.enqueue(new Uint8Array(await data.arrayBuffer()));
+                    if (stopped) {
+                        controller.close();
+                    }
+                });
+                mediaRecorder.addEventListener('stop', () => {
+                    resolve();
+                    stopped = true;
+                });
+            },
+        });
+        const audioStream = async function*() {
+            const reader = readableStream.getReader();
+            while (true) {
+                const result = await reader.read();
+                if (result.done) {
+                    break;
+                }
+
+                if (result.value) {
+                    yield { AudioEvent: { AudioChunk: result.value } };
+                }
+            }
+        };
+        const command = new StartStreamTranscriptionCommand({
+            LanguageCode: languageCode,
+            MediaEncoding: mediaEncoding,
+            MediaSampleRateHertz: mediaSampleRateHertz,
+            AudioStream: audioStream()
+        });
+        mediaRecorder.addEventListener('start', () => {
+            transcribeStreamingClient.send(command)
+            .then(async (response) => {
+                if (!response.TranscriptResultStream) {
+                    reject(new Error('Not found TranscriptResultStream.'));
+                    return;
+                }
+
+                for await (const resultStream of response.TranscriptResultStream) {
+                    if (resultStream.BadRequestException) {
+                        reject(resultStream.BadRequestException);
+                        break;
+                    }
+
+                    if (resultStream.ConflictException) {
+                        reject(resultStream.ConflictException);
+                        break;
+                    }
+
+                    if (resultStream.InternalFailureException) {
+                        reject(resultStream.InternalFailureException);
+                        break;
+                    }
+
+                    if (resultStream.LimitExceededException) {
+                        reject(resultStream.LimitExceededException);
+                        break;
+                    }
+
+                    if (resultStream.ServiceUnavailableException) {
+                        reject(resultStream.ServiceUnavailableException);
+                        break;
+                    }
+
+                    if (resultStream.TranscriptEvent && resultStream.TranscriptEvent.Transcript) {
+                        transcriptEventCallback(resultStream.TranscriptEvent.Transcript);
+                    }
+                }
+            })
+            .catch((error) => {
+                if (error instanceof Error) {
+                    reject(error);
+                } else {
+                    reject(new Error(`Failed to start stream transcription. : ${error}`));
+                }
+            });
+        });
+    });
+}
+
+/**
+ * 認識結果のコールバック関数です。
+ * @callback TranscriptEventCallback
+ * @param {Transcript} transcript 認識結果。
+ */
+
 // 外部に公開します。
 exports.setConfig = setConfig;
 exports.checkLoginSession = checkLoginSession;
 exports.login = login;
 exports.logout = logout;
+exports.registerStreamTranscription = registerStreamTranscription;

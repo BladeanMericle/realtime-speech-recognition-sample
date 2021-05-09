@@ -2,12 +2,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "chrome",
+            "name": "Launch Firefox",
+            "type": "firefox",
             "request": "launch",
-            "name": "Debug",
+            "reAttach": true,
             "url": "http://localhost:8080/index.html",
             "webRoot": "${workspaceFolder}/release/",
-            "sourceMaps": true
         }
     ]
 }
