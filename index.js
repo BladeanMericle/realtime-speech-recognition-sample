@@ -1,3 +1,6 @@
+/**
+ * @file メインの処理です。
+ */
 'use strict';
 
 const Common = require('./common');
@@ -207,54 +210,55 @@ function start(ev) {
 
     amazonTextarea.textContent = '';
 
-    if (!MediaRecorder.isTypeSupported(audioMime)) {
-        alert('Webブラウザがogg形式をサポートしていないため、音声認識を開始できません。');
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+        mediaRecorder = null;
+    }
+
+    mediaRecorder = Common.createOpusMediaRecorder(audioMediaStream);
+    if (!mediaRecorder) {
+        alert('Webブラウザがaudio/ogg;codecs=opus形式をサポートしていないため、音声認識を開始できません。')
         return;
     }
 
-    if (mediaRecorder) {
-        mediaRecorder.stop();
-    }
-
-    mediaRecorder = new MediaRecorder(audioMediaStream, {
-        mimeType: audioMime,
-    });
-
-    Amazon.registerStreamTranscription(mediaRecorder, 'ja-JP', 'ogg-opus', 48000, (transcript) => {
-        console.debug('Received stream transcription.', transcript);
-        if (!transcript.Results) {
-            return;
-        }
-
-        transcript.Results.forEach((result) => {
-            // 途中経過は表示しません。
-            if (result.IsPartial) {
+    if (Amazon.isEnabledStreamTranscription()) {
+        Amazon.registerStreamTranscription(mediaRecorder, 'ja-JP', 'ogg-opus', 48000, (transcript) => {
+            console.debug('Received stream transcription.', transcript);
+            if (!transcript.Results) {
                 return;
             }
 
-            if (!result.Alternatives)
-            {
-                return;
-            }
-
-            result.Alternatives.forEach((alternative) => {
-                if (!alternative.Transcript) {
+            transcript.Results.forEach((result) => {
+                // 途中経過は表示しません。
+                if (result.IsPartial) {
                     return;
                 }
 
-                amazonTextarea.textContent += result.StartTime + ' : ' + alternative.Transcript + '\n';
-            });
-        });
-    })
-    .then(() => {
-        console.info('Finished stream transcription.');
-        amazonTextarea.textContent += '[認識終了]\n';
-    })
-    .catch((error) => {
-        console.error('Failed stream transcription.', error);
-    });
+                if (!result.Alternatives)
+                {
+                    return;
+                }
 
-    amazonTextarea.textContent += '[認識開始]\n';
+                result.Alternatives.forEach((alternative) => {
+                    if (!alternative.Transcript) {
+                        return;
+                    }
+
+                    amazonTextarea.textContent += result.StartTime + ' : ' + alternative.Transcript + '\n';
+                });
+            });
+        })
+        .then(() => {
+            console.info('Finished stream transcription.');
+            amazonTextarea.textContent += '[認識終了]\n';
+        })
+        .catch((error) => {
+            console.error('Failed stream transcription.', error);
+            amazonTextarea.textContent += '[認識エラー]\n';
+        });
+        amazonTextarea.textContent += '[認識開始]\n';
+    }
+
     mediaRecorder.start(500);
     startButton.disabled = true;
     stopButton.disabled = false;

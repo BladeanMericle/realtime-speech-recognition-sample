@@ -1,3 +1,6 @@
+/**
+ * @file 共通処理です。
+ */
 'use strict';
 
 /**
@@ -135,7 +138,7 @@ function getTextareaElement(elementId) {
 
 /**
  * JSONオブジェクトを読み込みます。
- * @param {string} path JSONのパス
+ * @param {string} path JSONのパス。
  * @returns {Promise<object>} JSONオブジェクト。
  */
 function readJson(path) {
@@ -152,6 +155,22 @@ function readJson(path) {
     });
 }
 
+/**
+ * "audio/ogg;codecs=opus"形式の音声レコーダーを作成します。
+ * @param {MediaStream} mediaStream 音声メディアストリーム。
+ * @returns {MediaRecorder} 音声レコーダー。
+ */
+function createOpusMediaRecorder(mediaStream) {
+    const audioMime = 'audio/ogg;codecs=opus';
+    const options = { mimeType: audioMime };
+
+    if (window.MediaRecorder.isTypeSupported(audioMime)) {
+        return new window.MediaRecorder(mediaStream, options);
+    }
+
+    return null;
+}
+
 // 外部に公開します。
 exports.addLoadAction = addLoadAction;
 exports.addClickEvent = addClickEvent;
@@ -162,3 +181,4 @@ exports.getCanvasElement = getCanvasElement;
 exports.getParagraphElement = getParagraphElement;
 exports.getTextareaElement = getTextareaElement;
 exports.readJson = readJson;
+exports.createOpusMediaRecorder = createOpusMediaRecorder;

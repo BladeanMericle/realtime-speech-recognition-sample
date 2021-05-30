@@ -1,3 +1,6 @@
+/**
+ * @file AWS に関する処理です。
+ */
 'use strict';
 
 const { CognitoUserPool, CognitoUser, AuthenticationDetails } = require('amazon-cognito-identity-js');
@@ -28,6 +31,12 @@ let clientId = null;
  * @type {string}
  */
 let identityPoolId = null;
+
+/**
+ * Amazon Transcribeを使用するかどうか。
+ * @type {boolean}
+ */
+let transcribe = false;
 
 /**
  * ユーザープール。
@@ -70,6 +79,8 @@ function setConfig(config) {
         throw new Error('Not found identity pool ID.');
     }
 
+    transcribe = config['Transcribe'];
+
     userPool = new CognitoUserPool({
         UserPoolId: userPoolId,
         ClientId: clientId,
@@ -89,10 +100,12 @@ function prepareClient(accessToken) {
         identityPoolId: identityPoolId,
         logins: logins
     });
-    transcribeStreamingClient = new TranscribeStreamingClient({
-        region: regionName,
-        credentials: credentialProvider
-    });
+    if (isEnabledStreamTranscription()) {
+        transcribeStreamingClient = new TranscribeStreamingClient({
+            region: regionName,
+            credentials: credentialProvider
+        });
+    }
 }
 
 /**
@@ -191,6 +204,14 @@ function logout() {
 }
 
 /**
+ * 音声認識ストリーミングが有効かどうかを取得します。
+ * @returns {boolean} 音声認識ストリーミングが有効かどうか。
+ */
+function isEnabledStreamTranscription() {
+    return new Boolean(transcribe);
+}
+
+/**
  * 音声認識ストリーミングを登録します。
  * @param {MediaRecorder} mediaRecorder 音声レコーダー。
  * @param {string} languageCode 言語コード。
@@ -201,7 +222,7 @@ function logout() {
  */
 function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding, mediaSampleRateHertz, transcriptEventCallback) {
     return new Promise((resolve, reject) => {
-        if (!(mediaRecorder instanceof MediaRecorder)) {
+        if (!(mediaRecorder instanceof MediaRecorder) && !(mediaRecorder instanceof OpusMediaRecorder)) {
             reject(new Error('\'mediaRecorder\' is not MediaRecorder.'));
         }
 
@@ -219,6 +240,10 @@ function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding,
 
         if (!transcriptEventCallback) {
             reject(new Error('Not found \'transcriptEventCallback\'.'));
+        }
+
+        if (!isEnabledStreamTranscription()) {
+            reject(new Error('StreamTranscription config is not enabled.'));
         }
 
         if (!transcribeStreamingClient) {
@@ -323,4 +348,5 @@ exports.setConfig = setConfig;
 exports.checkLoginSession = checkLoginSession;
 exports.login = login;
 exports.logout = logout;
+exports.isEnabledStreamTranscription = isEnabledStreamTranscription;
 exports.registerStreamTranscription = registerStreamTranscription;

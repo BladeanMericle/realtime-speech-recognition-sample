@@ -5,5 +5,8 @@ module.exports = {
     output: {
         path: Path.resolve(__dirname, 'release'),
         filename: 'index.js'
-    }
+    },
+    resolve: {
+        fallback: { "crypto": false },
+    },
 };
