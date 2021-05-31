@@ -8,12 +8,6 @@ const Amazon = require('./amazon');
 const Frequency = require('./frequency');
 
 /**
- * 音声フォーマットのMIME。
- * @type {string}
- */
-const audioMime = 'audio/ogg';
-
-/**
  * メッセージセクション。
  * @type {HTMLElement}
  */

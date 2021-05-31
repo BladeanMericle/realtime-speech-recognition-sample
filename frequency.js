@@ -106,4 +106,6 @@ class FrequencyPainter {
 }
 
 // 外部に公開します。
-exports.FrequencyPainter = FrequencyPainter;
+export {
+    FrequencyPainter
+}

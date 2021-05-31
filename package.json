@@ -4,8 +4,7 @@
   "description": "リアルタイム音声認識のサンプルです。",
   "main": "index.js",
   "scripts": {
-    "build-development": "cpx resources/**/* release && webpack --mode development",
-    "build-production": "cpx resources/**/* release && webpack --mode production",
+    "build": "cpx resources/**/* release && webpack --stats-error-details --stats-children",
     "debug": "http-server ./release -p 8080"
   },
   "repository": {

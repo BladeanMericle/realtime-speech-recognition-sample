@@ -222,8 +222,9 @@ function isEnabledStreamTranscription() {
  */
 function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding, mediaSampleRateHertz, transcriptEventCallback) {
     return new Promise((resolve, reject) => {
-        if (!(mediaRecorder instanceof MediaRecorder) && !(mediaRecorder instanceof OpusMediaRecorder)) {
-            reject(new Error('\'mediaRecorder\' is not MediaRecorder.'));
+        // 型チェックもしたいですが、裏で同機能の別クラスにしていることがあるのでチェックしていません。
+        if (!mediaRecorder) {
+            reject(new Error('Not found \'mediaRecorder\'.'));
         }
 
         if (!languageCode) {
@@ -344,9 +345,11 @@ function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding,
  */
 
 // 外部に公開します。
-exports.setConfig = setConfig;
-exports.checkLoginSession = checkLoginSession;
-exports.login = login;
-exports.logout = logout;
-exports.isEnabledStreamTranscription = isEnabledStreamTranscription;
-exports.registerStreamTranscription = registerStreamTranscription;
+export {
+    setConfig,
+    checkLoginSession,
+    login,
+    logout,
+    isEnabledStreamTranscription,
+    registerStreamTranscription
+}
