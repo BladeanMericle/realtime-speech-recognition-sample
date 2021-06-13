@@ -291,8 +291,7 @@ Common.addLoadAction(() => {
     .then((json) => {
         console.info('Loaded config.', json);
 
-        const amazonConfig = json['Amazon'];
-        Amazon.setConfig(amazonConfig); // Amazon の設定は必須
+        Amazon.setConfig(json); // Amazon の設定は必須
 
         // TODO 他のサービスの設定
         Amazon.checkLoginSession()

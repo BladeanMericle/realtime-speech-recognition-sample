@@ -1,0 +1,10 @@
+{
+  "name": "gcp",
+  "version": "0.1.0",
+  "description": "GCPのサービスアカウントトークンを取得します。",
+  "main": "index.js",
+  "scripts": {
+  },
+  "author": "Bladean Mericle",
+  "license": "BSD-3-Clause"
+}

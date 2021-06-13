@@ -1,6 +1,6 @@
 {
   "name": "realtime-speech-recognition-sample",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "リアルタイム音声認識のサンプルです。",
   "main": "index.js",
   "scripts": {

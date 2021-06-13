@@ -208,7 +208,7 @@ function logout() {
  * @returns {boolean} 音声認識ストリーミングが有効かどうか。
  */
 function isEnabledStreamTranscription() {
-    return new Boolean(transcribe);
+    return Boolean(transcribe);
 }
 
 /**
