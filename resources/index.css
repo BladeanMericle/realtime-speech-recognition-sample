@@ -13,6 +13,13 @@
     display: none;
 }
 
+/* 各音声認識セクション */
+.recognition-section {
+    float: left;
+    margin: 4px;
+    padding: 4px;
+}
+
 /* 周波数の描画領域 */
 #frequency-canvas {
     height: 100px;

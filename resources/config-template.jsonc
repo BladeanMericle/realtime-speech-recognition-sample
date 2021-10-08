@@ -9,5 +9,11 @@
     // Amazon CognitoのIDプールのIDを設定します。
     "IdentityPoolId": "IDプールID",
     // Amazon Transcribeを使用する場合はtrue、使用しない場合はfalseを設定します。
-    "Transcribe": true
+    "Transcribe": true,
+    // GCPの認証トークンを取得する関数の名前を設定します。GCPを使用しない場合、設定する必要はありません。
+    "GcpFunctionName": "GCPの認証トークンを取得する関数の名前",
+    // Azureの認証トークンを取得する関数の名前を設定します。Azureを使用しない場合、設定する必要はありません。
+    "AzureFunctionName": "Azureの認証トークンを取得する関数の名前",
+    // ACPの認証トークンを取得する関数の名前を設定します。ACPを使用しない場合、設定する必要はありません。
+    "AcpFunctionName": "ACPの認証トークンを取得する関数の名前"
 }

@@ -3,9 +3,7 @@
  */
  'use strict';
 
-// 誠意作成中
-
-// const { SpeechClient } = require('@google-cloud/speech');
+const { SpeechClient } = require('@google-cloud/speech');
 
 // const client = new SpeechClient({ })
 

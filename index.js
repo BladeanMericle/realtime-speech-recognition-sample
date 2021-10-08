@@ -4,7 +4,8 @@
 'use strict';
 
 const Common = require('./common');
-const Amazon = require('./amazon');
+const Aws = require('./aws');
+const Acp = require('./acp');
 const Frequency = require('./frequency');
 
 /**
@@ -68,10 +69,52 @@ let startButton = null;
 let stopButton = null;
 
 /**
- * Amazon Transcribe の認識結果。
- * @type {HTMLButtonElement}
+ * Amazon Transcribeセクション。
+ * @type {HTMLElement}
  */
-let amazonTextarea = null;
+let awsSection = null;
+
+/**
+ * Amazon Transcribeの認識結果。
+ * @type {HTMLTextAreaElement}
+ */
+let awsTextarea = null;
+
+/**
+ * GCP Speech To Textセクション。
+ * @type {HTMLElement}
+ */
+let gcpSection = null;
+
+/**
+ * GCP Speech To Textの認識結果。
+ * @type {HTMLTextAreaElement}
+ */
+let gcpTextarea = null;
+
+/**
+ * Azure Speech To Textセクション。
+ * @type {HTMLElement}
+ */
+let azureSection = null;
+
+/**
+ * Azure Speech To Textの認識結果。
+ * @type {HTMLTextAreaElement}
+ */
+let azureTextarea = null;
+
+/**
+ * ACPセクション。
+ * @type {HTMLElement}
+ */
+let acpSection = null;
+
+/**
+ * ACPの認識結果。
+ * @type {HTMLTextAreaElement}
+ */
+let acpTextarea = null;
 
 /**
  * 音声メディアストリーム。
@@ -98,6 +141,24 @@ let frequencyPainter = null;
 let mediaRecorder = null;
 
 /**
+ * GCPの認証トークンを取得する関数の名前。
+ * @type {string}
+ */
+let gcpFunctionName = null;
+
+/**
+ * Azureの認証トークンを取得する関数の名前。
+ * @type {string}
+ */
+let azureFunctionName = null;
+
+/**
+ * ACPの認証トークンを取得する関数の名前。
+ * @type {string}
+ */
+let acpFunctionName = null;
+
+/**
  * 要素を読み込みます。
  */
 function loadElements() {
@@ -114,7 +175,14 @@ function loadElements() {
     Common.addClickEvent(startButton, start);
     stopButton = Common.getButtonElement('stop-button');
     Common.addClickEvent(stopButton, stop);
-    amazonTextarea = Common.getTextareaElement('amazon-textarea');
+    awsSection = Common.getSectionElement('azure-section');
+    awsTextarea = Common.getTextareaElement('aws-textarea');
+    gcpSection = Common.getSectionElement('gcp-section');
+    gcpTextarea = Common.getTextareaElement('gcp-textarea');
+    azureSection = Common.getSectionElement('azure-section');
+    azureTextarea = Common.getTextareaElement('azure-textarea');
+    acpSection = Common.getSectionElement('acp-section');
+    acpTextarea = Common.getTextareaElement('acp-textarea');
 }
 
 /**
@@ -178,7 +246,7 @@ function showMessagePage(message) {
  */
 function login(ev) {
     loginButton.disabled = true;
-    Amazon.login(loginUserNameInput.value, loginPasswordInput.value)
+    Aws.login(loginUserNameInput.value, loginPasswordInput.value)
     .then(() => {
         console.info('Succeeded to login.');
         showMainPage();
@@ -198,11 +266,6 @@ function login(ev) {
  */
 function start(ev) {
     console.info('Start speech recognition.');
-    if (frequencyPainter) {
-        frequencyPainter.start();
-    }
-
-    amazonTextarea.textContent = '';
 
     if (mediaRecorder) {
         mediaRecorder.stop();
@@ -215,47 +278,150 @@ function start(ev) {
         return;
     }
 
-    if (Amazon.isEnabledStreamTranscription()) {
-        Amazon.registerStreamTranscription(mediaRecorder, 'ja-JP', 'ogg-opus', 48000, (transcript) => {
-            console.debug('Received stream transcription.', transcript);
-            if (!transcript.Results) {
+    awsTextarea.textContent = '';
+    gcpTextarea.textContent = '';
+    azureTextarea.textContent = '';
+    acpTextarea.textContent = '';
+    startButton.disabled = true;
+    stopButton.disabled = false;
+
+    Promise.all([
+        connectGcp(),
+        connectAzure(),
+        connectAcp()
+    ])
+    .then(() => {
+        startAwsRecognition();
+        startGcpRecognition();
+        startAzureRecognition();
+        startAcpRecognition();
+
+        if (frequencyPainter) {
+            frequencyPainter.start();
+        }
+
+        mediaRecorder.start(500);
+    })
+    .catch((error) => {
+        console.error('Failed to get access token.', error);
+    });
+}
+
+/**
+ * Amazon Transcribeの音声認識を開始します。
+ */
+function startAwsRecognition() {
+    if (!Aws.isEnabledStreamTranscription()) {
+        return;
+    }
+
+    if (!mediaRecorder) {
+        return;
+    }
+
+    Aws.registerStreamTranscription(mediaRecorder, 'ja-JP', 'ogg-opus', 48000, (transcript) => {
+        console.debug('Received stream transcription.', transcript);
+        if (!transcript.Results) {
+            return;
+        }
+
+        transcript.Results.forEach((result) => {
+            // 途中経過は表示しません。
+            if (result.IsPartial) {
                 return;
             }
 
-            transcript.Results.forEach((result) => {
-                // 途中経過は表示しません。
-                if (result.IsPartial) {
+            if (!result.Alternatives)
+            {
+                return;
+            }
+
+            result.Alternatives.forEach((alternative) => {
+                if (!alternative.Transcript) {
                     return;
                 }
 
-                if (!result.Alternatives)
-                {
-                    return;
-                }
-
-                result.Alternatives.forEach((alternative) => {
-                    if (!alternative.Transcript) {
-                        return;
-                    }
-
-                    amazonTextarea.textContent += result.StartTime + ' : ' + alternative.Transcript + '\n';
-                });
+                awsTextarea.textContent += result.StartTime + ' : ' + alternative.Transcript + '\n';
             });
-        })
-        .then(() => {
-            console.info('Finished stream transcription.');
-            amazonTextarea.textContent += '[認識終了]\n';
-        })
-        .catch((error) => {
-            console.error('Failed stream transcription.', error);
-            amazonTextarea.textContent += '[認識エラー]\n';
         });
-        amazonTextarea.textContent += '[認識開始]\n';
+    })
+    .then(() => {
+        console.info('Finished AWS stream transcription.');
+        awsTextarea.textContent += '[認識終了]\n';
+    })
+    .catch((error) => {
+        console.error('Failed AWS stream transcription.', error);
+        awsTextarea.textContent += '[認識エラー]\n';
+    });
+    awsTextarea.textContent += '[認識開始]\n';
+}
+
+/**
+ * GCP Speech To Textの音声認識サービスに接続します。
+ */
+async function connectGcp() {
+    // TODO 未実装
+}
+
+/**
+ * GCP Speech To Textの音声認識を開始します。
+ */
+function startGcpRecognition() {
+    // TODO 未実装
+}
+
+/**
+ * Azure Speech To Textの音声認識サービスに接続します。
+ */
+async function connectAzure() {
+    // TODO 未実装
+}
+
+/**
+ * Azure Speech To Textの音声認識を開始します。
+ */
+function startAzureRecognition() {
+    // TODO 未実装
+}
+
+/**
+ * ACPの音声認識サービスに接続します。
+ */
+async function connectAcp() {
+    if (!acpFunctionName) {
+        return;
     }
 
-    mediaRecorder.start(500);
-    startButton.disabled = true;
-    stopButton.disabled = false;
+    const appKey = await Aws.callLambdaFunction(acpFunctionName, { });
+    await Acp.connect({ AppKey: appKey });
+}
+
+/**
+ * ACPの音声認識を開始します。
+ */
+function startAcpRecognition() {
+    if (!acpFunctionName) {
+        return;
+    }
+
+    if (!mediaRecorder) {
+        return;
+    }
+
+    Acp.registerStreamTranscription(mediaRecorder, (result) => {
+        if (!result || !result.text) {
+            return;
+        }
+
+        acpTextarea.textContent += result.results.slice(-1)[0].starttime + ' : ' + result.text + '\n';
+    }).then(() => {
+        console.info('Finished ACP stream transcription.');
+        acpTextarea.textContent += '[認識終了]\n';
+    }).catch((error) => {
+        console.error('Failed ACP stream transcription.', error);
+        acpTextarea.textContent += '[認識エラー]\n';
+    });
+    acpTextarea.textContent += '[認識開始]\n';
 }
 
 /**
@@ -291,10 +457,16 @@ Common.addLoadAction(() => {
     .then((json) => {
         console.info('Loaded config.', json);
 
-        Amazon.setConfig(json); // Amazon の設定は必須
+        Aws.setConfig(json); // AWS の設定は必須
+        awsSection.style.display = Aws.isEnabledStreamTranscription() ? 'block' : 'none';
+        gcpFunctionName = json.GcpFunctionName;
+        gcpSection.style.display = gcpFunctionName ? 'block' : 'none';
+        azureFunctionName = json.AzureFunctionName;
+        azureSection.style.display = azureFunctionName ? 'block' : 'none';
+        acpFunctionName = json.AcpFunctionName;
+        acpSection.style.display = acpFunctionName ? 'block' : 'none';
 
-        // TODO 他のサービスの設定
-        Amazon.checkLoginSession()
+        Aws.checkLoginSession()
         .then((hasSession) => {
             if (hasSession) {
                 console.info('Found login session.');

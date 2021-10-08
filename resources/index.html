@@ -7,6 +7,7 @@
 
 	<link rel="icon" href="favicon.svg" type="image/svg+xml">
 	<link rel="stylesheet" type="text/css" href="index.css" />
+	<script type="text/javascript" src="wrp.js" charset="UTF-8"></script>
 	<script type="text/javascript" src="index.js" charset="UTF-8"></script>
 </head>
 <body>
@@ -36,14 +37,38 @@
 			<button id="stop-button" disabled="true">停止</button>
 		</p>
 		<p>
-			<div>
+			<section id="aws-section" class="recognition-section">
 				<p>
 					Amazon Transcribe
 				</p>
 				<p>
-					<textarea id="amazon-textarea" cols="40" rows="20" readonly="true"></textarea>
+					<textarea id="aws-textarea" cols="40" rows="20" readonly="true"></textarea>
 				</p>
-			</div>
+			</section>
+			<section id="gcp-section" class="recognition-section">
+				<p>
+					GCP Speech To Text
+				</p>
+				<p>
+					<textarea id="gcp-textarea" cols="40" rows="20" readonly="true"></textarea>
+				</p>
+			</section>
+			<section id="azure-section" class="recognition-section">
+				<p>
+					Azure Speech To Text
+				</p>
+				<p>
+					<textarea id="azure-textarea" cols="40" rows="20" readonly="true"></textarea>
+				</p>
+			</section>
+			<section id="acp-section" class="recognition-section">
+				<p>
+					AmiVoice Cloud Platform
+				</p>
+				<p>
+					<textarea id="acp-textarea" cols="40" rows="20" readonly="true"></textarea>
+				</p>
+			</section>
 		</p>
 	</section>
 </body>

@@ -1,5 +1,5 @@
 /**
- * @file AWS に関する処理です。
+ * @file AWSに関する処理です。
  */
 'use strict';
 
@@ -7,6 +7,23 @@ const { CognitoUserPool, CognitoUser, AuthenticationDetails } = require('amazon-
 const { CognitoIdentityClient } = require("@aws-sdk/client-cognito-identity");
 const { fromCognitoIdentityPool } = require('@aws-sdk/credential-provider-cognito-identity');
 const { TranscribeStreamingClient, StartStreamTranscriptionCommand, Transcript } = require('@aws-sdk/client-transcribe-streaming');
+const { LambdaClient, InvokeCommand } = require("@aws-sdk/client-lambda");
+
+/**
+ * AWSの設定です。
+ * @typedef {object} AwsConfig
+ * @property {string} RegionName リージョン名。
+ * @property {string} UserPoolId ユーザープールID。
+ * @property {string} ClientId クライアントID。
+ * @property {string} IdentityPoolId IDプールID。
+ * @property {boolean} Transcribe Amazon Transcribeを使用するかどうか。
+ */
+
+/**
+ * 認識結果のコールバック関数です。
+ * @callback TranscriptEventCallback
+ * @param {Transcript} transcript 認識結果。
+ */
 
 /**
  * リージョン名。
@@ -51,8 +68,14 @@ let userPool = null;
 let transcribeStreamingClient = null;
 
 /**
+ * AWS Lambda のクライアント。
+ * @type {LambdaClient}
+ */
+let lambdaClient = null;
+
+/**
  * 設定を設定します。
- * @param {object} config
+ * @param {AwsConfig} config
  */
 function setConfig(config) {
     if (!config) {
@@ -106,6 +129,11 @@ function prepareClient(accessToken) {
             credentials: credentialProvider
         });
     }
+
+    lambdaClient = new LambdaClient({
+        region: regionName,
+        credentials: credentialProvider
+    });
 }
 
 /**
@@ -217,8 +245,8 @@ function isEnabledStreamTranscription() {
  * @param {string} languageCode 言語コード。
  * @param {string} mediaEncoding 音声エンコーディング。
  * @param {number} mediaSampleRateHertz サンプリングレート。
- * @param {TranscriptEventCallback} transcriptEventCallback サンプリングレート。
- * @returns {Promise<any>} 非同期処理の結果。戻り値は初回ログインかどうか。
+ * @param {TranscriptEventCallback} transcriptEventCallback 認識結果のコールバック関数。
+ * @returns {Promise<any>} 非同期処理の結果。戻り値はなし。
  */
 function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding, mediaSampleRateHertz, transcriptEventCallback) {
     return new Promise((resolve, reject) => {
@@ -339,10 +367,33 @@ function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding,
 }
 
 /**
- * 認識結果のコールバック関数です。
- * @callback TranscriptEventCallback
- * @param {Transcript} transcript 認識結果。
+ * AWS Lambdaの関数を呼び出します。
+ * @param {string} functionName 関数名。
+ * @param {object} inputParameter 入力パラメーター。
+ * @returns {Promise<object>} 非同期処理の結果。戻り値は出力パラメーター。
  */
+function callLambdaFunction(functionName, inputParameter) {
+    return new Promise((resolve, reject) => {
+        if (!lambdaClient) {
+            reject(new Error('AWS Lambda client is not prepared.'));
+        }
+
+        lambdaClient.send(new InvokeCommand({
+            FunctionName: functionName,
+            Payload: new TextEncoder().encode(JSON.stringify(inputParameter))
+        }))
+        .then(async (response) => {
+            resolve(JSON.parse(new TextDecoder().decode(response.Payload)));
+        })
+        .catch((error) => {
+            if (error instanceof Error) {
+                reject(error);
+            } else {
+                reject(new Error(`Failed to call AWS Lambda function. : ${error}`));
+            }
+        });;
+    });
+}
 
 // 外部に公開します。
 export {
@@ -351,5 +402,6 @@ export {
     login,
     logout,
     isEnabledStreamTranscription,
-    registerStreamTranscription
+    registerStreamTranscription,
+    callLambdaFunction
 }
