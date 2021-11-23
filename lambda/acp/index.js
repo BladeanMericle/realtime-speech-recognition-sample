@@ -1,7 +1,7 @@
 const env = process.env;
 const serviceId = env.SERVICE_ID;
 const servicePassword = env.SERVICE_PASSWORD;
-const url = 'https://acp-api.amivoice.com/issue_service_authorization?sid=' + serviceId + '&spw=' + servicePassword;
+const url = `https://acp-api.amivoice.com/issue_service_authorization?sid=${serviceId}&spw=${servicePassword}`;
 const https = require('https');
 
 exports.handler = async (event) => {
@@ -13,10 +13,10 @@ exports.handler = async (event) => {
             });
             response.on('end', () => {
                 resolve(data);
-            });            
+            });
         }).on('error', (e) => {
             reject(new Error(e));
         });
     });
-    return promise
+    return promise;
 };
