@@ -319,6 +319,7 @@ function startAwsRecognition() {
         return;
     }
 
+    let partialTextLength = 0;
     Aws.registerStreamTranscription(mediaRecorder, 'ja-JP', 'ogg-opus', 48000, (transcript) => {
         console.debug('Received stream transcription.', transcript);
         if (!transcript.Results) {
@@ -326,11 +327,6 @@ function startAwsRecognition() {
         }
 
         transcript.Results.forEach((result) => {
-            // 途中経過は表示しません。
-            if (result.IsPartial) {
-                return;
-            }
-
             if (!result.Alternatives)
             {
                 return;
@@ -341,7 +337,23 @@ function startAwsRecognition() {
                     return;
                 }
 
-                awsTextarea.textContent += result.StartTime + ' : ' + alternative.Transcript + '\n';
+                if (result.IsPartial) {
+                    const partialText = `(認識中) ${alternative.Transcript}`;
+                    if (partialTextLength != 0) {
+                        awsTextarea.textContent = awsTextarea.textContent.slice(0, -partialTextLength);
+                    }
+
+                    partialTextLength = partialText.length;
+                    awsTextarea.textContent += partialText;
+                } else {
+                    const fixedText = `${result.StartTime * 1000} : ${alternative.Transcript}\n`;
+                    if (partialTextLength != 0) {
+                        awsTextarea.textContent = awsTextarea.textContent.slice(0, -partialTextLength);
+                    }
+
+                    partialTextLength = 0;
+                    awsTextarea.textContent += fixedText;
+                }
             });
         });
     })
@@ -408,13 +420,36 @@ function startAcpRecognition() {
         return;
     }
 
-    Acp.registerStreamTranscription(mediaRecorder, (result) => {
-        if (!result || !result.text) {
-            return;
-        }
+    let updatedTextLength = 0;
+    Acp.registerStreamTranscription(
+        mediaRecorder,
+        (result) => {
+            if (!result || !result.text) {
+                return;
+            }
 
-        acpTextarea.textContent += result.results.slice(-1)[0].starttime + ' : ' + result.text + '\n';
-    }).then(() => {
+            const updatedText = `(認識中) ${result.text}`;
+            if (updatedTextLength != 0) {
+                acpTextarea.textContent = acpTextarea.textContent.slice(0, -updatedTextLength);
+            }
+
+            updatedTextLength = updatedText.length;
+            acpTextarea.textContent += updatedText;
+        },
+        (result) => {
+            if (!result || !result.text) {
+                return;
+            }
+
+            const finalizedText = `${result.results.slice(-1)[0].starttime} : ${result.text}\n`;
+            if (updatedTextLength != 0) {
+                acpTextarea.textContent = acpTextarea.textContent.slice(0, -updatedTextLength);
+            }
+
+            updatedTextLength = 0;
+            acpTextarea.textContent += finalizedText;
+        }
+    ).then(() => {
         console.info('Finished ACP stream transcription.');
         acpTextarea.textContent += '[認識終了]\n';
     }).catch((error) => {

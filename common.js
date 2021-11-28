@@ -164,15 +164,11 @@ function createOpusMediaRecorder(mediaStream) {
     const audioMime = 'audio/ogg;codecs=opus';
     const options = { mimeType: audioMime };
 
-    if (!window.MediaRecorder) {
+    if (!window.MediaRecorder || !window.MediaRecorder.isTypeSupported(audioMime)) {
         return null; // TODO "audio/ogg;codecs=opus"に対応するMediaRecorder相当のクラスを用意する
     }
 
-    if (window.MediaRecorder.isTypeSupported(audioMime)) {
-        return new window.MediaRecorder(mediaStream, options);
-    }
-
-    return null; // TODO "audio/ogg;codecs=opus"に対応するMediaRecorder相当のクラスを用意する
+    return new window.MediaRecorder(mediaStream, options);
 }
 
 // 外部に公開します。

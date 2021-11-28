@@ -13,9 +13,68 @@
  */
 
 /**
+ * 認識途中結果のコールバック関数です。
+ * @callback ResultUpdatedCallback
+ * @param {ResultUpdatedEvent} result 認識途中結果。
+ */
+
+/**
+ * 認識途中結果イベント。
+ * @see {@link https://acp.amivoice.com/main/manual/u-イベントパケット/}
+ * @typedef {object} ResultUpdatedEvent
+ * @property {Array<UpdatedResult>} results 認識途中結果情報の一覧。
+ * @property {string} text 認識途中のすべての形態素の written を結合したテキスト。末尾には “…” が付く。
+ */
+
+/**
+ * 認識途中結果情報。
+ * @typedef {object} UpdatedResult
+ * @property {Array<UpdatedToken>} tokens 認識途中の形態素の配列
+ * @property {string} text 認識途中のすべての形態素の written を結合したテキスト。末尾には “…” が付く。
+ */
+
+/**
+ * 認識途中の形態素。
+ * @typedef {object} UpdatedToken
+ * @property {string} written 形態素の表記。最後の形態素は、writtenが “…” のダミー形態素。
+ */
+
+/**
  * 認識結果のコールバック関数です。
- * @callback AcpEventCallback
- * @param {object} result 認識結果。
+ * @callback ResultFinalizedCallback
+ * @param {ResultFinalizedEvent} result 認識結果。
+ */
+
+/**
+ * 認識完了結果イベント。
+ * @see {@link https://acp.amivoice.com/main/manual/a-イベントパケット/}
+ * @typedef {object} ResultFinalizedEvent
+ * @property {Array<FinalizedResult>} results 「発話区間の認識結果」の配列。
+ * @property {string} text 「発話区間の認識結果」の全てを結合した全体の認識結果テキスト。
+ * @property {string} code 結果を表す1文字のコード。
+ * @property {string} message エラー内容を表す文字列。
+ */
+
+/**
+ * 発話区間の認識結果。
+ * @typedef {object} FinalizedResult
+ * @property {number} confidence 信頼度(0～1の値。 0:信頼度低, 1:信頼度高) 。
+ * @property {number} starttime 発話開始時間（音声データの先頭が0）。
+ * @property {number} endtime 発話終了時間（音声データの先頭が0）。
+ * @property {Array<object>} tags 未使用（空配列）。
+ * @property {string} rulename 未使用（空文字）。
+ * @property {string} text 認識結果テキスト。
+ * @property {Array<FinalizedToken>} tokens 認識結果テキストの形態素の配列。
+ */
+
+/**
+ * 認識結果テキストの形態素。
+ * @typedef {object} FinalizedToken
+ * @property {string} written 形態素（単語）の表記。
+ * @property {number} confidence 形態素の信頼度（認識結果の尤度）。
+ * @property {number} starttime 形態素の開始時間（音声データの先頭が0）。
+ * @property {number} endtime 形態素の終了時間（音声データの先頭が0）。
+ * @property {string} spoken 形態素の読み。
  */
 
 /**
@@ -96,18 +155,23 @@ function connect(config) {
 /**
  * 音声認識ストリーミングを登録します。
  * @param {MediaRecorder} mediaRecorder 音声レコーダー。
- * @param {AcpEventCallback} acpEventCallback 認識結果のコールバック。
+ * @param {ResultUpdatedCallback} resultUpdatedCallback 認識結果のコールバック。
+ * @param {ResultFinalizedCallback} resultFinalizedCallback 認識結果のコールバック。
  * @returns {Promise<any>} 非同期処理の結果。戻り値はなし。
  */
-function registerStreamTranscription(mediaRecorder, acpEventCallback) {
+function registerStreamTranscription(mediaRecorder, resultUpdatedCallback, resultFinalizedCallback) {
     return new Promise((resolve, reject) => {
         // 型チェックもしたいですが、裏で同機能の別クラスにしていることがあるのでチェックしていません。
         if (!mediaRecorder) {
             reject(new Error('Not found \'mediaRecorder\'.'));
         }
 
-        if (!acpEventCallback) {
-            reject(new Error('Not found \'acpEventCallback\'.'));
+        if (!resultUpdatedCallback) {
+            reject(new Error('Not found \'resultUpdatedCallback\'.'));
+        }
+
+        if (!resultFinalizedCallback) {
+            reject(new Error('Not found \'resultFinalizedCallback\'.'));
         }
 
         if (!Wrp) {
@@ -136,11 +200,12 @@ function registerStreamTranscription(mediaRecorder, acpEventCallback) {
         Wrp.resultUpdated = function(result) {
             const resultObject = JSON.parse(result);
             console.debug('Wrp.resultUpdated', resultObject);
+            resultUpdatedCallback(resultObject);
         };
         Wrp.resultFinalized = function(result) {
             const resultObject = JSON.parse(result);
             console.debug('Wrp.resultFinalized:', resultObject);
-            acpEventCallback(resultObject);
+            resultFinalizedCallback(resultObject);
         };
     });
 }
