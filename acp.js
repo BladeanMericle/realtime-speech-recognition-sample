@@ -155,7 +155,7 @@ function connect(config) {
 /**
  * 音声認識ストリーミングを登録します。
  * @param {MediaRecorder} mediaRecorder 音声レコーダー。
- * @param {ResultUpdatedCallback} resultUpdatedCallback 認識結果のコールバック。
+ * @param {ResultUpdatedCallback} resultUpdatedCallback 認識途中結果のコールバック。
  * @param {ResultFinalizedCallback} resultFinalizedCallback 認識結果のコールバック。
  * @returns {Promise<any>} 非同期処理の結果。戻り値はなし。
  */

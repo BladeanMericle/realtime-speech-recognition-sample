@@ -243,12 +243,12 @@ function isEnabledStreamTranscription() {
  * 音声認識ストリーミングを登録します。
  * @param {MediaRecorder} mediaRecorder 音声レコーダー。
  * @param {string} languageCode 言語コード。
- * @param {string} mediaEncoding 音声エンコーディング。
- * @param {number} mediaSampleRateHertz サンプリングレート。
+ * @param {string} encoding 音声エンコーディング。
+ * @param {number} sampleRateHertz サンプリングレート。
  * @param {TranscriptEventCallback} transcriptEventCallback 認識結果のコールバック関数。
  * @returns {Promise<any>} 非同期処理の結果。戻り値はなし。
  */
-function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding, mediaSampleRateHertz, transcriptEventCallback) {
+function registerStreamTranscription(mediaRecorder, languageCode, encoding, sampleRateHertz, transcriptEventCallback) {
     return new Promise((resolve, reject) => {
         // 型チェックもしたいですが、裏で同機能の別クラスにしていることがあるのでチェックしていません。
         if (!mediaRecorder) {
@@ -259,11 +259,11 @@ function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding,
             reject(new Error('Not found \'languageCode\'.'));
         }
 
-        if (!mediaEncoding) {
+        if (!encoding) {
             reject(new Error('Not found \'mediaEncoding\'.'));
         }
 
-        if (!mediaSampleRateHertz) {
+        if (!sampleRateHertz) {
             reject(new Error('Not found \'mediaSampleRateHertz\'.'));
         }
 
@@ -312,8 +312,8 @@ function registerStreamTranscription(mediaRecorder, languageCode, mediaEncoding,
         };
         const command = new StartStreamTranscriptionCommand({
             LanguageCode: languageCode,
-            MediaEncoding: mediaEncoding,
-            MediaSampleRateHertz: mediaSampleRateHertz,
+            MediaEncoding: encoding,
+            MediaSampleRateHertz: sampleRateHertz,
             AudioStream: audioStream()
         });
         mediaRecorder.addEventListener('start', () => {

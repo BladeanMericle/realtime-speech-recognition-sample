@@ -156,11 +156,20 @@ function readJson(path) {
 }
 
 /**
+ * "audio/ogg;codecs=opus"形式をサポートしているかどうかを取得します。
+ * @returns {boolean} "audio/ogg;codecs=opus"形式をサポートしているかどうか。
+ */
+function isSupportOggOpus() {
+    const audioMime = 'audio/ogg;codecs=opus';
+    return window.MediaRecorder && window.MediaRecorder.isTypeSupported(audioMime);
+}
+
+/**
  * "audio/ogg;codecs=opus"形式の音声レコーダーを作成します。
  * @param {MediaStream} mediaStream 音声メディアストリーム。
  * @returns {MediaRecorder} 音声レコーダー。
  */
-function createOpusMediaRecorder(mediaStream) {
+function createOggOpusMediaRecorder(mediaStream) {
     const audioMime = 'audio/ogg;codecs=opus';
     const options = { mimeType: audioMime };
 
@@ -182,5 +191,6 @@ export {
     getParagraphElement,
     getTextareaElement,
     readJson,
-    createOpusMediaRecorder
+    isSupportOggOpus,
+    createOggOpusMediaRecorder
 }

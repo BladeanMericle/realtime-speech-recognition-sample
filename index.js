@@ -5,6 +5,7 @@
 
 const Common = require('./common');
 const Aws = require('./aws');
+const Gcp = require('./gcp');
 const Acp = require('./acp');
 const Frequency = require('./frequency');
 
@@ -141,12 +142,6 @@ let frequencyPainter = null;
 let mediaRecorder = null;
 
 /**
- * GCPの認証トークンを取得する関数の名前。
- * @type {string}
- */
-let gcpFunctionName = null;
-
-/**
  * Azureの認証トークンを取得する関数の名前。
  * @type {string}
  */
@@ -175,7 +170,7 @@ function loadElements() {
     Common.addClickEvent(startButton, start);
     stopButton = Common.getButtonElement('stop-button');
     Common.addClickEvent(stopButton, stop);
-    awsSection = Common.getSectionElement('azure-section');
+    awsSection = Common.getSectionElement('aws-section');
     awsTextarea = Common.getTextareaElement('aws-textarea');
     gcpSection = Common.getSectionElement('gcp-section');
     gcpTextarea = Common.getTextareaElement('gcp-textarea');
@@ -272,11 +267,7 @@ function start(ev) {
         mediaRecorder = null;
     }
 
-    mediaRecorder = Common.createOpusMediaRecorder(audioMediaStream);
-    if (!mediaRecorder) {
-        alert('Webブラウザがaudio/ogg;codecs=opus形式をサポートしていないため、音声認識を開始できません。')
-        return;
-    }
+    mediaRecorder = Common.createOggOpusMediaRecorder(audioMediaStream);
 
     awsTextarea.textContent = '';
     gcpTextarea.textContent = '';
@@ -300,7 +291,9 @@ function start(ev) {
             frequencyPainter.start();
         }
 
-        mediaRecorder.start(500);
+        if (mediaRecorder) {
+            mediaRecorder.start(500);
+        }
     })
     .catch((error) => {
         console.error('Failed to get access token.', error);
@@ -311,11 +304,11 @@ function start(ev) {
  * Amazon Transcribeの音声認識を開始します。
  */
 function startAwsRecognition() {
-    if (!Aws.isEnabledStreamTranscription()) {
+    if (!mediaRecorder) {
         return;
     }
 
-    if (!mediaRecorder) {
+    if (!Aws.isEnabledStreamTranscription()) {
         return;
     }
 
@@ -338,7 +331,7 @@ function startAwsRecognition() {
                 }
 
                 if (result.IsPartial) {
-                    const partialText = `(認識中) ${alternative.Transcript}`;
+                    const partialText = `認識中 : ${alternative.Transcript}`;
                     if (partialTextLength != 0) {
                         awsTextarea.textContent = awsTextarea.textContent.slice(0, -partialTextLength);
                     }
@@ -359,6 +352,11 @@ function startAwsRecognition() {
     })
     .then(() => {
         console.info('Finished AWS stream transcription.');
+
+        if (partialTextLength > 0) {
+            awsTextarea.textContent += '\n';
+        }
+
         awsTextarea.textContent += '[認識終了]\n';
     })
     .catch((error) => {
@@ -372,14 +370,65 @@ function startAwsRecognition() {
  * GCP Speech To Textの音声認識サービスに接続します。
  */
 async function connectGcp() {
-    // TODO 未実装
+    if (!Gcp.isEnabledSpeechRecognition()) {
+        return;
+    }
+
+    Gcp.initializeSpeechRecognition();
 }
 
 /**
  * GCP Speech To Textの音声認識を開始します。
  */
 function startGcpRecognition() {
-    // TODO 未実装
+    if (!Gcp.isEnabledSpeechRecognition()) {
+        return;
+    }
+
+    gcpTextarea.textContent += '[認識開始]\n';
+    let timeStamp = 0;
+    let partialTextLength = 0;
+    Gcp.startSpeechRecognition(
+        (event) => {
+            if (!event) {
+                return;
+            }
+
+            console.debug('Received GCP Speech To Text result.', event);
+            const result = event.results[event.resultIndex];
+            if (!result.isFinal) {
+                timeStamp = timeStamp == 0 ? Math.round(event.timeStamp) : timeStamp; // 最初のタイムスタンプのみ採用する
+                const partialText = `認識中 : ${result[0].transcript}`;
+                if (partialTextLength != 0) {
+                    gcpTextarea.textContent = gcpTextarea.textContent.slice(0, -partialTextLength);
+                }
+
+                partialTextLength = partialText.length;
+                gcpTextarea.textContent += partialText;
+            } else {
+                const fixedText = `${timeStamp} : ${result[0].transcript}\n`;
+                if (partialTextLength != 0) {
+                    gcpTextarea.textContent = gcpTextarea.textContent.slice(0, -partialTextLength);
+                }
+
+                timeStamp = 0;
+                partialTextLength = 0;
+                gcpTextarea.textContent += fixedText;
+            }
+        },
+        (error) => {
+            console.error('Failed GCP Speech To Text.', error);
+            gcpTextarea.textContent += '[認識エラー]\n';
+        },
+        () => {
+            console.info('Finished GCP Speech To Text.');
+
+            if (partialTextLength > 0) {
+                gcpTextarea.textContent += '\n';
+            }
+
+            gcpTextarea.textContent += '[認識終了]\n';
+        });
 }
 
 /**
@@ -400,6 +449,10 @@ function startAzureRecognition() {
  * ACPの音声認識サービスに接続します。
  */
 async function connectAcp() {
+    if (!mediaRecorder) {
+        return;
+    }
+
     if (!acpFunctionName) {
         return;
     }
@@ -412,23 +465,24 @@ async function connectAcp() {
  * ACPの音声認識を開始します。
  */
 function startAcpRecognition() {
-    if (!acpFunctionName) {
-        return;
-    }
-
     if (!mediaRecorder) {
         return;
     }
 
+    if (!acpFunctionName) {
+        return;
+    }
+
+    let isCompleted = false;
     let updatedTextLength = 0;
     Acp.registerStreamTranscription(
         mediaRecorder,
         (result) => {
-            if (!result || !result.text) {
+            if (!result || !result.text || isCompleted) {
                 return;
             }
 
-            const updatedText = `(認識中) ${result.text}`;
+            const updatedText = `認識中 : ${result.text}`;
             if (updatedTextLength != 0) {
                 acpTextarea.textContent = acpTextarea.textContent.slice(0, -updatedTextLength);
             }
@@ -437,7 +491,7 @@ function startAcpRecognition() {
             acpTextarea.textContent += updatedText;
         },
         (result) => {
-            if (!result || !result.text) {
+            if (!result || !result.text || isCompleted) {
                 return;
             }
 
@@ -451,10 +505,17 @@ function startAcpRecognition() {
         }
     ).then(() => {
         console.info('Finished ACP stream transcription.');
+
+        if (updatedTextLength > 0) {
+            acpTextarea.textContent += '\n';
+        }
+
         acpTextarea.textContent += '[認識終了]\n';
+        isCompleted = true;
     }).catch((error) => {
         console.error('Failed ACP stream transcription.', error);
         acpTextarea.textContent += '[認識エラー]\n';
+        isCompleted = true;
     });
     acpTextarea.textContent += '[認識開始]\n';
 }
@@ -475,6 +536,10 @@ function stop(ev) {
         mediaRecorder = null;
     }
 
+    if (Gcp.isEnabledSpeechRecognition()) {
+        Gcp.stopSpeechRecognition();
+    }
+
     stopButton.disabled = true;
     startButton.disabled = false;
 }
@@ -493,13 +558,12 @@ Common.addLoadAction(() => {
         console.info('Loaded config.', json);
 
         Aws.setConfig(json); // AWS の設定は必須
-        awsSection.style.display = Aws.isEnabledStreamTranscription() ? 'block' : 'none';
-        gcpFunctionName = json.GcpFunctionName;
-        gcpSection.style.display = gcpFunctionName ? 'block' : 'none';
+        awsSection.style.display = Common.isSupportOggOpus() && Aws.isEnabledStreamTranscription() ? 'block' : 'none';
+        gcpSection.style.display = Gcp.isEnabledSpeechRecognition() ? 'block' : 'none';
         azureFunctionName = json.AzureFunctionName;
-        azureSection.style.display = azureFunctionName ? 'block' : 'none';
+        azureSection.style.display = Common.isSupportOggOpus() && azureFunctionName ? 'block' : 'none';
         acpFunctionName = json.AcpFunctionName;
-        acpSection.style.display = acpFunctionName ? 'block' : 'none';
+        acpSection.style.display = Common.isSupportOggOpus() && acpFunctionName ? 'block' : 'none';
 
         Aws.checkLoginSession()
         .then((hasSession) => {
