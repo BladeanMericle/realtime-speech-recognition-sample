@@ -1,5 +1,5 @@
 /**
- * @file GCPに関する処理です。
+ * @file GCPに関する処理のはずでしたが、ブラウザから直接呼び出す手段がないのでGoogle Chrome上でWeb Speech APIを呼び出す手法に切り替わっています。
  */
 'use strict';
 

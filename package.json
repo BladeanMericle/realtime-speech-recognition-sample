@@ -22,7 +22,8 @@
     "@aws-sdk/client-lambda": "^3.47.0",
     "@aws-sdk/client-transcribe-streaming": "^3.47.0",
     "@aws-sdk/credential-provider-cognito-identity": "^3.47.0",
-    "amazon-cognito-identity-js": "^4.6.0"
+    "amazon-cognito-identity-js": "^4.6.0",
+    "microsoft-cognitiveservices-speech-sdk": "^1.20.0"
   },
   "devDependencies": {
     "@types/dom-mediacapture-record": "^1.0.11",

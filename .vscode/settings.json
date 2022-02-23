@@ -4,12 +4,14 @@
     "cSpell.words": [
         "'s",
         "ACP",
-        "GCP",
         "amivoice",
-        "nolog",
-        "starttime",
+        "cognitiveservices",
         "endtime",
+        "GCP",
+        "japaneast",
+        "nolog",
         "rulename",
+        "starttime",
         "Wasm",
         "webassembly"
     ],

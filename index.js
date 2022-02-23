@@ -6,6 +6,7 @@
 const Common = require('./common');
 const Aws = require('./aws');
 const Gcp = require('./gcp');
+const Azure = require('./azure');
 const Acp = require('./acp');
 const Frequency = require('./frequency');
 
@@ -339,7 +340,7 @@ function startAwsRecognition() {
                     partialTextLength = partialText.length;
                     awsTextarea.textContent += partialText;
                 } else {
-                    const fixedText = `${result.StartTime * 1000} : ${alternative.Transcript}\n`;
+                    const fixedText = `${toSecondsString(result.StartTime * 1000)} : ${alternative.Transcript}\n`;
                     if (partialTextLength != 0) {
                         awsTextarea.textContent = awsTextarea.textContent.slice(0, -partialTextLength);
                     }
@@ -386,7 +387,9 @@ function startGcpRecognition() {
     }
 
     gcpTextarea.textContent += '[認識開始]\n';
-    let timeStamp = 0;
+    const initialTime = new Date();
+    let startTime = new Date();
+    let isFirst = true;
     let partialTextLength = 0;
     Gcp.startSpeechRecognition(
         (event) => {
@@ -397,7 +400,7 @@ function startGcpRecognition() {
             console.debug('Received GCP Speech To Text result.', event);
             const result = event.results[event.resultIndex];
             if (!result.isFinal) {
-                timeStamp = timeStamp == 0 ? Math.round(event.timeStamp) : timeStamp; // 最初のタイムスタンプのみ採用する
+                startTime = isFirst ? new Date() : startTime; // 最初のタイムスタンプのみ採用する
                 const partialText = `認識中 : ${result[0].transcript}`;
                 if (partialTextLength != 0) {
                     gcpTextarea.textContent = gcpTextarea.textContent.slice(0, -partialTextLength);
@@ -405,15 +408,16 @@ function startGcpRecognition() {
 
                 partialTextLength = partialText.length;
                 gcpTextarea.textContent += partialText;
+                isFirst = false;
             } else {
-                const fixedText = `${timeStamp} : ${result[0].transcript}\n`;
+                const fixedText = `${toSecondsString(startTime - initialTime)} : ${result[0].transcript}\n`;
                 if (partialTextLength != 0) {
                     gcpTextarea.textContent = gcpTextarea.textContent.slice(0, -partialTextLength);
                 }
 
-                timeStamp = 0;
                 partialTextLength = 0;
                 gcpTextarea.textContent += fixedText;
+                isFirst = true;
             }
         },
         (error) => {
@@ -435,14 +439,51 @@ function startGcpRecognition() {
  * Azure Speech To Textの音声認識サービスに接続します。
  */
 async function connectAzure() {
-    // TODO 未実装
+    if (!mediaRecorder) {
+        return;
+    }
+
+    if (!azureFunctionName) {
+        return;
+    }
+
+    const authorizationToken = await Aws.callLambdaFunction(azureFunctionName, { });
+    Azure.initializeSpeechRecognition({ AuthorizationToken: authorizationToken });
 }
 
 /**
  * Azure Speech To Textの音声認識を開始します。
  */
 function startAzureRecognition() {
-    // TODO 未実装
+    if (!mediaRecorder) {
+        return;
+    }
+
+    if (!azureFunctionName) {
+        return;
+    }
+
+    azureTextarea.textContent += '[認識開始]\n';
+    const initialTime = new Date();
+    let startTime = new Date();
+    Azure.startSpeechRecognition(
+        () => {
+            console.debug('Start Azure Speech Service once.');
+            startTime = new Date();
+        },
+        (result) => {
+            console.debug('Received Azure Speech Service result.', result);
+            const recognitionStartTime = (startTime - initialTime) + (result.offset / 10000);
+            azureTextarea.textContent += `${toSecondsString(recognitionStartTime)} : ${result.text}\n`;
+        },
+        (error) => {
+            console.error('Failed Azure Speech Service.', error);
+            azureTextarea.textContent += '[認識エラー]\n';
+        },
+        () => {
+            console.info('Finished Azure Speech Service.');
+            azureTextarea.textContent += '[認識終了]\n';
+        });
 }
 
 /**
@@ -495,7 +536,7 @@ function startAcpRecognition() {
                 return;
             }
 
-            const finalizedText = `${result.results.slice(-1)[0].starttime} : ${result.text}\n`;
+            const finalizedText = `${toSecondsString(result.results.slice(-1)[0].starttime)} : ${result.text}\n`;
             if (updatedTextLength != 0) {
                 acpTextarea.textContent = acpTextarea.textContent.slice(0, -updatedTextLength);
             }
@@ -521,6 +562,20 @@ function startAcpRecognition() {
 }
 
 /**
+ * ミリ秒を秒の文字列に変換します。
+ * @param {number} milliseconds ミリ秒
+ */
+function toSecondsString(milliseconds) {
+    const roundedMilliseconds = Math.round(milliseconds);
+    const stringMilliseconds = roundedMilliseconds.toString();
+    if (roundedMilliseconds >= 1000) {
+        return stringMilliseconds.substring(0, stringMilliseconds.length - 3) + '.' + stringMilliseconds.slice(-3);
+    } else {
+        return '0.' + ('000' + stringMilliseconds).slice(-3);
+    }
+}
+
+/**
  * 音声認識を停止します。
  * @this {HTMLElement}
  * @param {MouseEvent} ev マウスイベント
@@ -539,6 +594,8 @@ function stop(ev) {
     if (Gcp.isEnabledSpeechRecognition()) {
         Gcp.stopSpeechRecognition();
     }
+
+    Azure.stopSpeechRecognition();
 
     stopButton.disabled = true;
     startButton.disabled = false;
