@@ -439,10 +439,6 @@ function startGcpRecognition() {
  * Azure Speech To Textの音声認識サービスに接続します。
  */
 async function connectAzure() {
-    if (!mediaRecorder) {
-        return;
-    }
-
     if (!azureFunctionName) {
         return;
     }
@@ -455,10 +451,6 @@ async function connectAzure() {
  * Azure Speech To Textの音声認識を開始します。
  */
 function startAzureRecognition() {
-    if (!mediaRecorder) {
-        return;
-    }
-
     if (!azureFunctionName) {
         return;
     }
@@ -618,7 +610,7 @@ Common.addLoadAction(() => {
         awsSection.style.display = Common.isSupportOggOpus() && Aws.isEnabledStreamTranscription() ? 'block' : 'none';
         gcpSection.style.display = Gcp.isEnabledSpeechRecognition() ? 'block' : 'none';
         azureFunctionName = json.AzureFunctionName;
-        azureSection.style.display = Common.isSupportOggOpus() && azureFunctionName ? 'block' : 'none';
+        azureSection.style.display = azureFunctionName ? 'block' : 'none';
         acpFunctionName = json.AcpFunctionName;
         acpSection.style.display = Common.isSupportOggOpus() && acpFunctionName ? 'block' : 'none';
 
