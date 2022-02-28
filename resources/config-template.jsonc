@@ -12,6 +12,8 @@
     "Transcribe": true,
     // Azureの認証トークンを取得する関数の名前を設定します。Azureを使用しない場合、設定する必要はありません。
     "AzureFunctionName": "Azureの認証トークンを取得する関数の名前",
+    // Azureの音声認識を行うリージョンを設定します。未設定の場合は"japaneast"となります。Azureを使用しない場合、設定する必要はありません。
+    "AzureRegion": "Azureの音声認識を行うリージョン",
     // ACPの認証トークンを取得する関数の名前を設定します。ACPを使用しない場合、設定する必要はありません。
     "AcpFunctionName": "ACPの認証トークンを取得する関数の名前"
 }

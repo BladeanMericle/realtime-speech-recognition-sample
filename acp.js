@@ -186,11 +186,9 @@ function registerStreamTranscription(mediaRecorder, resultUpdatedCallback, resul
             Wrp.feedData(dataArray, 0, dataArray.length);
             if (stopped) {
                 Wrp.feedDataPause();
-                Wrp.disconnect();
             }
         });
         mediaRecorder.addEventListener('stop', () => {
-            resolve();
             stopped = true;
         });
 
@@ -206,6 +204,14 @@ function registerStreamTranscription(mediaRecorder, resultUpdatedCallback, resul
             const resultObject = JSON.parse(result);
             console.debug('Wrp.resultFinalized:', resultObject);
             resultFinalizedCallback(resultObject);
+        };
+        Wrp.feedDataPauseEnded = function() {
+            console.debug('Wrp.feedDataPauseEnded');
+            Wrp.disconnect();
+        };
+        Wrp.disconnectEnded = function() {
+            console.debug('Wrp.disconnectEnded');
+            resolve();
         };
     });
 }

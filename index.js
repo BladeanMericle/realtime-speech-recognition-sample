@@ -149,6 +149,12 @@ let mediaRecorder = null;
 let azureFunctionName = null;
 
 /**
+ * Azureの音声認識を行うリージョン。
+ * @type {string}
+ */
+let azureRegion = null;
+
+/**
  * ACPの認証トークンを取得する関数の名前。
  * @type {string}
  */
@@ -269,6 +275,7 @@ function start(ev) {
     }
 
     mediaRecorder = Common.createOggOpusMediaRecorder(audioMediaStream);
+    console.debug('Get media recorder.', mediaRecorder);
 
     awsTextarea.textContent = '';
     gcpTextarea.textContent = '';
@@ -444,7 +451,7 @@ async function connectAzure() {
     }
 
     const authorizationToken = await Aws.callLambdaFunction(azureFunctionName, { });
-    Azure.initializeSpeechRecognition({ AuthorizationToken: authorizationToken });
+    Azure.initializeSpeechRecognition({ AuthorizationToken: authorizationToken, Region: azureRegion });
 }
 
 /**
@@ -607,12 +614,13 @@ Common.addLoadAction(() => {
         console.info('Loaded config.', json);
 
         Aws.setConfig(json); // AWS の設定は必須
-        awsSection.style.display = Common.isSupportOggOpus() && Aws.isEnabledStreamTranscription() ? 'block' : 'none';
+        awsSection.style.display = Aws.isEnabledStreamTranscription() ? 'block' : 'none';
         gcpSection.style.display = Gcp.isEnabledSpeechRecognition() ? 'block' : 'none';
         azureFunctionName = json.AzureFunctionName;
+        azureRegion = json.AzureRegion;
         azureSection.style.display = azureFunctionName ? 'block' : 'none';
         acpFunctionName = json.AcpFunctionName;
-        acpSection.style.display = Common.isSupportOggOpus() && acpFunctionName ? 'block' : 'none';
+        acpSection.style.display = acpFunctionName ? 'block' : 'none';
 
         Aws.checkLoginSession()
         .then((hasSession) => {

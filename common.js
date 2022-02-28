@@ -4,6 +4,15 @@
 'use strict';
 
 /**
+ * opus-media-recorder のワーカー設定。
+ * @type {object}
+ */
+const workerOptions = {
+    OggOpusEncoderWasmPath: 'https://cdn.jsdelivr.net/npm/opus-media-recorder@latest/OggOpusEncoder.wasm',
+    WebMOpusEncoderWasmPath: 'https://cdn.jsdelivr.net/npm/opus-media-recorder@latest/WebMOpusEncoder.wasm'
+};
+
+/**
  * ページ読み込み時の処理を追加します。
  * @param {(this: Window, ev: Event)} loadAction ページ読み込み時の処理。
  */
@@ -156,15 +165,6 @@ function readJson(path) {
 }
 
 /**
- * "audio/ogg;codecs=opus"形式をサポートしているかどうかを取得します。
- * @returns {boolean} "audio/ogg;codecs=opus"形式をサポートしているかどうか。
- */
-function isSupportOggOpus() {
-    const audioMime = 'audio/ogg;codecs=opus';
-    return window.MediaRecorder && window.MediaRecorder.isTypeSupported(audioMime);
-}
-
-/**
  * "audio/ogg;codecs=opus"形式の音声レコーダーを作成します。
  * @param {MediaStream} mediaStream 音声メディアストリーム。
  * @returns {MediaRecorder} 音声レコーダー。
@@ -174,7 +174,7 @@ function createOggOpusMediaRecorder(mediaStream) {
     const options = { mimeType: audioMime };
 
     if (!window.MediaRecorder || !window.MediaRecorder.isTypeSupported(audioMime)) {
-        return null; // TODO "audio/ogg;codecs=opus"に対応するMediaRecorder相当のクラスを用意する
+        return new OpusMediaRecorder(mediaStream, options, workerOptions);
     }
 
     return new window.MediaRecorder(mediaStream, options);
@@ -191,6 +191,5 @@ export {
     getParagraphElement,
     getTextareaElement,
     readJson,
-    isSupportOggOpus,
     createOggOpusMediaRecorder
 }

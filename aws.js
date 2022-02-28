@@ -289,10 +289,10 @@ function registerStreamTranscription(mediaRecorder, languageCode, encoding, samp
                     controller.enqueue(new Uint8Array(await data.arrayBuffer()));
                     if (stopped) {
                         controller.close();
+                        resolve();
                     }
                 });
                 mediaRecorder.addEventListener('stop', () => {
-                    resolve();
                     stopped = true;
                 });
             },
