@@ -305,7 +305,8 @@ function registerStreamTranscription(mediaRecorder, languageCode, encoding, samp
                     break;
                 }
 
-                if (result.value) {
+                // 空配列を渡すと音声認識が終了してしまいます。
+                if (result.value && result.value.length > 0) {
                     yield { AudioEvent: { AudioChunk: result.value } };
                 }
             }
