@@ -231,7 +231,6 @@ function showMainPage() {
  * @param {string} message メッセージ。
  */
 function showMessagePage(message) {
-    defaultSection.style.display = 'none';
     loginSection.style.display = 'none';
     mainSection.style.display = 'none';
     if (message) {
@@ -639,6 +638,6 @@ Common.addLoadAction(() => {
     })
     .catch((error) => {
         console.error('Failed to load.', error);
-        showMessagePage('初期化に失敗しました。配置したファイルの内容や権限に誤りがないかご確認ください。');
+        showMessagePage('config.jsonの読み込みに失敗しました。ファイルの内容や権限に誤りがないかご確認ください。');
     });
 });
