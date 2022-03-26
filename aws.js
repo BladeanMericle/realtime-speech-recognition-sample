@@ -383,7 +383,7 @@ function callLambdaFunction(functionName, inputParameter) {
             FunctionName: functionName,
             Payload: new TextEncoder().encode(JSON.stringify(inputParameter))
         }))
-        .then(async (response) => {
+        .then((response) => {
             resolve(JSON.parse(new TextDecoder().decode(response.Payload)));
         })
         .catch((error) => {
