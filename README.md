@@ -4,7 +4,7 @@
 Amazon Cognitoを使って認証を行い、各音声認識サービスを使ってマイクからの音声をリアルタイムに音声認識します。
 
 同名の[同人誌版](https://techbookfest.org/product/6148730564640768)は、バージョン0.1.0について解説したものになります。
-こちらはAmazon Transcribeの音声認識のみとなります。
+こちらはAmazon Transcribeのみ動作します。
 
 ## 対象の音声認識サービス
 
